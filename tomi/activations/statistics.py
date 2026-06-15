@@ -71,33 +71,36 @@ def compare_activations(
     cache_b: ActivationCache,
     names: Optional[List[str]] = None,
 ) -> Dict[str, float]:
-    """Compute pairwise L2 distances between matching entries in two caches.
 
-    Parameters
-    ----------
-    cache_a:
-        First activation cache (e.g. clean run).
-    cache_b:
-        Second activation cache (e.g. corrupted run).
-    names:
-        Subset of keys to compare.  Defaults to the intersection.
-
-    Returns
-    -------
-    Dict[str, float]
-        Mapping ``hook_name → L2_distance``.
-    """
     if names is None:
         names = sorted(set(cache_a.keys()) & set(cache_b.keys()))
 
     distances: Dict[str, float] = {}
+
     for name in names:
         a = cache_a.get(name)
         b = cache_b.get(name)
+
         if a is None or b is None:
             continue
-        diff = (a.float() - b.float())
+
+        # =========================================================
+        #  FIX: ALIGN SEQUENCE LENGTH (CRITICAL)
+        # =========================================================
+        if a.dim() >= 3 and b.dim() >= 3:
+            min_len = min(a.shape[1], b.shape[1])
+            a = a[:, :min_len]
+            b = b[:, :min_len]
+
+        elif a.shape != b.shape:
+            # fallback safety for unexpected cases
+            min_len = min(a.numel(), b.numel())
+            a = a.flatten()[:min_len]
+            b = b.flatten()[:min_len]
+
+        diff = a.float() - b.float()
         distances[name] = float(diff.norm().item())
+
     return distances
 
 
