@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from typing import Dict, List, Optional, Sequence
-
+from weakref import ref
+from tomi.utils.align import align_sequence
 import numpy as np
 import torch
 
@@ -130,19 +131,33 @@ class ActivationStore:
     # ------------------------------------------------------------------
 
     def _gather(self, name: str) -> List[torch.Tensor]:
-        """Return a list of tensors for *name* across all caches."""
         if not self._caches:
             raise RuntimeError("ActivationStore is empty.")
+
         tensors = []
         for i, cache in enumerate(self._caches):
             t = cache.get(name)
+
             if t is None:
                 log.warning("Cache %d missing key '%s'; skipping.", i, name)
                 continue
+
             tensors.append(t)
+
         if not tensors:
             raise KeyError(f"No caches contain key '{name}'.")
-        return tensors
+
+    # =========================================================
+    # FIX: ALIGN ALL TENSORS BEFORE RETURN (IMPORTANT)
+    # =========================================================
+        ref = tensors[0]
+        aligned = [ref]
+
+        for t in tensors[1:]:
+            a, b = align_sequence(ref, t)
+            aligned.append(b)
+
+        return aligned
 
     # ------------------------------------------------------------------
     # Properties
