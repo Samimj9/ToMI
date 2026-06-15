@@ -13,6 +13,7 @@ import numpy as np
 import torch
 
 from tomi.activations.activation_cache import ActivationCache
+from tomi.utils.align import align_sequence
 from tomi.utils.tensor import to_numpy
 
 
@@ -84,19 +85,8 @@ def compare_activations(
         if a is None or b is None:
             continue
 
-        # =========================================================
-        #  FIX: ALIGN SEQUENCE LENGTH (CRITICAL)
-        # =========================================================
-        if a.dim() >= 3 and b.dim() >= 3:
-            min_len = min(a.shape[1], b.shape[1])
-            a = a[:, :min_len]
-            b = b[:, :min_len]
-
-        elif a.shape != b.shape:
-            # fallback safety for unexpected cases
-            min_len = min(a.numel(), b.numel())
-            a = a.flatten()[:min_len]
-            b = b.flatten()[:min_len]
+        # ✅ CLEAN ALIGNMENT (single source of truth)
+        a, b = align_sequence(a, b)
 
         diff = a.float() - b.float()
         distances[name] = float(diff.norm().item())
