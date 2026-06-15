@@ -85,7 +85,7 @@ def compare_activations(
         if a is None or b is None:
             continue
 
-        # ✅ CLEAN ALIGNMENT (single source of truth)
+        
         a, b = align_sequence(a, b)
 
         diff = a.float() - b.float()
